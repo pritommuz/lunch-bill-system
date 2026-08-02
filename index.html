@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Lunch Bill System</title>
+  <style>
+    :root {
+      --bg:#f4f7fb; --card:#fff; --text:#172033; --muted:#667085;
+      --line:#d8dee9; --primary:#0b5ed7; --primary-dark:#084298;
+      --success:#087443; --danger:#b42318; --shadow:0 10px 28px rgba(23,32,51,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+    header{background:linear-gradient(135deg,#0b5ed7,#123c78);color:#fff;padding:28px 18px}
+    .wrap,main{max-width:1180px;margin:0 auto}
+    h1{margin:0 0 8px;font-size:30px}
+    header p{margin:0;line-height:1.5;max-width:900px}
+    main{padding:24px 16px 50px}
+    .card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:20px;margin-bottom:22px}
+    h2{margin:0 0 16px;font-size:22px}
+    h3{margin:0 0 12px;font-size:17px}
+    .note{background:#eef5ff;border-left:4px solid var(--primary);padding:12px 14px;border-radius:8px;line-height:1.5;margin-bottom:18px}
+    .form-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:14px;align-items:end}
+    label{display:block;margin-bottom:6px;font-size:13px;font-weight:700;color:#344054}
+    input{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px}
+    input:focus{outline:2px solid rgba(11,94,215,.15);border-color:var(--primary)}
+    .day-box{padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;font-weight:700;min-height:39px}
+    .toolbar,.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+    .toolbar{margin:18px 0 12px}
+    .actions{margin-top:17px}
+    button{border:0;border-radius:8px;padding:10px 15px;font-size:14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--primary);color:#fff}.primary:hover{background:var(--primary-dark)}
+    .secondary{background:#e9eef6;color:#253653}
+    .success{background:#e6f5ec;color:var(--success)}
+    .danger{background:#feeceb;color:var(--danger)}
+    .small{padding:6px 9px;font-size:12px}
+    .customer-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px}
+    .customer{display:flex;align-items:center;gap:9px;border:1px solid var(--line);padding:11px 12px;border-radius:9px;background:#fbfcfe;cursor:pointer}
+    .customer input{width:auto;transform:scale(1.15);margin:0}
+    .customer.selected{background:#eaf7ef;border-color:#91c8a8}
+    .status{min-height:20px;margin-top:12px;font-weight:700;font-size:14px;color:var(--success)}
+    .bill-controls{display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:14px;align-items:end;margin-bottom:16px}
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:17px}
+    .summary{background:#fbfcfe;border:1px solid var(--line);border-radius:10px;padding:14px;color:var(--muted);font-size:13px}
+    .summary strong{display:block;margin-top:4px;font-size:23px;color:var(--primary-dark)}
+    .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+    table{width:100%;border-collapse:collapse;min-width:760px}
+    th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+    th{background:#f7f9fc;font-size:13px;color:#344054}
+    td{font-size:14px}
+    tr:last-child td{border-bottom:0}
+    .amount{font-weight:700;color:#173b70;white-space:nowrap}
+    .muted{color:var(--muted);font-size:13px}
+    .week-title{margin:4px 0 14px;font-weight:700;color:#243a5a}
+    .details{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px}
+    .person-card{border:1px solid var(--line);border-radius:10px;padding:14px;background:#fcfdff}
+    .person-card h3{display:flex;justify-content:space-between;gap:12px}
+    .person-card ul{margin:8px 0 0;padding-left:20px;line-height:1.6}
+    .hidden{display:none!important}
+    footer{text-align:center;color:var(--muted);font-size:13px;padding:8px 16px 30px}
+    @media(max-width:900px){
+      .customer-grid{grid-template-columns:repeat(2,1fr)}
+      .summary-grid{grid-template-columns:repeat(2,1fr)}
+      .details{grid-template-columns:1fr}
+    }
+    @media(max-width:620px){
+      h1{font-size:24px}
+      .form-grid,.bill-controls,.customer-grid,.summary-grid{grid-template-columns:1fr}
+      .card{padding:15px}
+    }
+    @media print{
+      header,.entry-card,.history-card,.bill-actions,footer{display:none!important}
+      body{background:#fff}
+      main{padding:0;max-width:none}
+      .card{box-shadow:none;margin:0;padding:0}
+      .table-wrap{border:0}
+      table{min-width:0}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Weekly Lunch Bill System</h1>
+    <p>Enter the date, lunch price, and people taking lunch. The system calculates individual bills for each Sunday–Thursday week and automatically opens the bill after a Thursday entry is saved.</p>
+  </div>
+</header>
+
+<main>
+  <section class="card entry-card">
+    <h2>Daily Lunch Entry</h2>
+    <div class="note">
+      <strong>Billing rule:</strong> Each selected person is charged the full lunch price entered for that date. Prices may differ by day. Only one entry is retained for each date.
+    </div>
+
+    <form id="mealForm">
+      <input type="hidden" id="editId">
+
+      <div class="form-grid">
+        <div>
+          <label for="mealDate">Date</label>
+          <input type="date" id="mealDate" required>
+        </div>
+        <div>
+          <label>Day</label>
+          <div class="day-box" id="dayDisplay">—</div>
+        </div>
+        <div>
+          <label for="mealPrice">Lunch Price (Taka)</label>
+          <input type="number" id="mealPrice" min="0" step="1" placeholder="e.g., 120" required>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <h3 style="margin:0;margin-right:auto">People Taking Lunch</h3>
+        <button type="button" class="secondary small" id="selectAll">Select All</button>
+        <button type="button" class="secondary small" id="clearSelection">Clear</button>
+      </div>
+
+      <div class="customer-grid" id="customerGrid"></div>
+
+      <div class="actions">
+        <button type="submit" class="primary" id="saveButton">Save Daily Entry</button>
+        <button type="button" class="secondary hidden" id="cancelEdit">Cancel Edit</button>
+        <button type="button" class="secondary" id="showWeek">Show This Week's Bill</button>
+      </div>
+      <div class="status" id="status"></div>
+    </form>
+  </section>
+
+  <section class="card" id="billSection">
+    <h2>Weekly Person-wise Bill</h2>
+
+    <div class="bill-controls">
+      <div>
+        <label for="weekEnding">Week Ending Thursday</label>
+        <input type="date" id="weekEnding">
+      </div>
+      <div class="actions bill-actions" style="margin-top:0">
+        <button type="button" class="primary" id="generateBill">Generate Bill</button>
+        <button type="button" class="success" id="exportBill">Export Bill CSV</button>
+        <button type="button" class="secondary" onclick="window.print()">Print Bill</button>
+      </div>
+    </div>
+
+    <div class="week-title" id="weekTitle">—</div>
+
+    <div class="summary-grid">
+      <div class="summary">Total Customers<strong id="customerCount">8</strong></div>
+      <div class="summary">Total Meal Portions<strong id="mealCount">0</strong></div>
+      <div class="summary">Total Weekly Bill<strong id="grandTotal">৳0</strong></div>
+      <div class="summary">Recorded Days<strong id="recordedDays">0</strong></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>SL</th>
+            <th>Customer</th>
+            <th>Meals Taken</th>
+            <th>Daily Charges</th>
+            <th>Total Bill</th>
+          </tr>
+        </thead>
+        <tbody id="billBody"></tbody>
+      </table>
+    </div>
+
+    <div class="details" id="detailCards"></div>
+  </section>
+
+  <section class="card history-card">
+    <h2>Daily Entry History</h2>
+    <div class="actions" style="margin-top:0;margin-bottom:14px">
+      <button type="button" class="success" id="exportHistory">Export All Entries CSV</button>
+      <button type="button" class="danger" id="clearAll">Delete All Entries</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Day</th>
+            <th>Price</th>
+            <th>People Taking Lunch</th>
+            <th>Daily Total</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>Data are stored in this browser. Export CSV files regularly as backup.</footer>
+
+<script>
+  const CUSTOMERS = [
+    {id:"c1",name:"Pritom"},
+    {id:"c2",name:"Oyshee"},
+    {id:"c3",name:"Galib"},
+    {id:"c4",name:"Farin"},
+    {id:"c5",name:"Nahian"},
+    {id:"c6",name:"Hosneara"},
+    {id:"c7",name:"Kamal"},
+    {id:"c8",name:"Sadia"}
+  ];
+
+  const STORAGE_KEY = "weeklyLunchEntriesV2";
+  let entries = loadEntries();
+
+  function loadEntries(){
+    try{
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    }catch{
+      return [];
+    }
+  }
+
+  function saveEntries(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }
+
+  function localISO(date=new Date()){
+    const y=date.getFullYear();
+    const m=String(date.getMonth()+1).padStart(2,"0");
+    const d=String(date.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function parseDate(s){ return new Date(s+"T00:00:00"); }
+
+  function addDays(date,days){
+    const d=new Date(date);
+    d.setDate(d.getDate()+days);
+    return d;
+  }
+
+  function formatDate(s){
+    if(!s) return "—";
+    return parseDate(s).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+  }
+
+  function dayName(s){
+    if(!s) return "—";
+    return parseDate(s).toLocaleDateString("en-US",{weekday:"long"});
+  }
+
+  function escapeHtml(value){
+    return String(value??"")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function customerName(id){
+    return CUSTOMERS.find(c=>c.id===id)?.name || "Unknown";
+  }
+
+  function weekRange(referenceDate){
+    const ref=parseDate(referenceDate);
+    const day=ref.getDay();
+    let sunday;
+
+    if(day===5) sunday=addDays(ref,-5);
+    else if(day===6) sunday=addDays(ref,-6);
+    else sunday=addDays(ref,-day);
+
+    const thursday=addDays(sunday,4);
+    return {start:localISO(sunday),end:localISO(thursday)};
+  }
+
+  function renderCustomers(selected=[]){
+    const grid=document.getElementById("customerGrid");
+    grid.innerHTML=CUSTOMERS.map(c=>`
+      <label class="customer ${selected.includes(c.id)?"selected":""}">
+        <input type="checkbox" name="customer" value="${c.id}" ${selected.includes(c.id)?"checked":""}>
+        <span>${escapeHtml(c.name)}</span>
+      </label>
+    `).join("");
+
+    grid.querySelectorAll('input[name="customer"]').forEach(box=>{
+      box.addEventListener("change",()=>{
+        box.closest(".customer").classList.toggle("selected",box.checked);
+      });
+    });
+  }
+
+  function selectedCustomers(){
+    return [...document.querySelectorAll('input[name="customer"]:checked')].map(x=>x.value);
+  }
+
+  function setStatus(message,error=false){
+    const el=document.getElementById("status");
+    el.textContent=message;
+    el.style.color=error?"var(--danger)":"var(--success)";
+    setTimeout(()=>{ if(el.textContent===message) el.textContent=""; },3500);
+  }
+
+  function updateDay(){
+    document.getElementById("dayDisplay").textContent=dayName(document.getElementById("mealDate").value);
+  }
+
+  function resetForm(){
+    document.getElementById("mealForm").reset();
+    document.getElementById("editId").value="";
+    document.getElementById("mealDate").value=localISO();
+    document.getElementById("saveButton").textContent="Save Daily Entry";
+    document.getElementById("cancelEdit").classList.add("hidden");
+    updateDay();
+    renderCustomers([]);
+  }
+
+  function renderHistory(){
+    const body=document.getElementById("historyBody");
+    const sorted=[...entries].sort((a,b)=>b.date.localeCompare(a.date));
+
+    if(!sorted.length){
+      body.innerHTML='<tr><td colspan="6" class="muted">No lunch entries saved.</td></tr>';
+      return;
+    }
+
+    body.innerHTML=sorted.map(e=>{
+      const names=e.customerIds.map(customerName).join(", ");
+      const total=Number(e.price)*e.customerIds.length;
+      return `
+        <tr>
+          <td>${formatDate(e.date)}</td>
+          <td>${dayName(e.date)}</td>
+          <td class="amount">৳${Number(e.price).toLocaleString()}</td>
+          <td>${escapeHtml(names)}</td>
+          <td class="amount">৳${total.toLocaleString()}</td>
+          <td>
+            <button class="secondary small" onclick="editEntry('${e.id}')">Edit</button>
+            <button class="danger small" onclick="deleteEntry('${e.id}')">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function weeklyBill(referenceDate){
+    const range=weekRange(referenceDate);
+    const weekEntries=entries
+      .filter(e=>e.date>=range.start && e.date<=range.end)
+      .sort((a,b)=>a.date.localeCompare(b.date));
+
+    const people=CUSTOMERS.map(c=>{
+      const meals=weekEntries
+        .filter(e=>e.customerIds.includes(c.id))
+        .map(e=>({date:e.date,price:Number(e.price)}));
+
+      return {
+        id:c.id,
+        name:c.name,
+        meals,
+        count:meals.length,
+        total:meals.reduce((s,m)=>s+m.price,0)
+      };
+    });
+
+    return {range,weekEntries,people};
+  }
+
+  function renderBill(){
+    let end=document.getElementById("weekEnding").value || weekRange(localISO()).end;
+    const bill=weeklyBill(end);
+    document.getElementById("weekEnding").value=bill.range.end;
+
+    document.getElementById("weekTitle").textContent=
+      `Billing period: ${formatDate(bill.range.start)} to ${formatDate(bill.range.end)} (Sunday–Thursday)`;
+
+    const totalMeals=bill.people.reduce((s,p)=>s+p.count,0);
+    const totalAmount=bill.people.reduce((s,p)=>s+p.total,0);
+
+    document.getElementById("customerCount").textContent=CUSTOMERS.length;
+    document.getElementById("mealCount").textContent=totalMeals;
+    document.getElementById("grandTotal").textContent=`৳${totalAmount.toLocaleString()}`;
+    document.getElementById("recordedDays").textContent=bill.weekEntries.length;
+
+    document.getElementById("billBody").innerHTML=bill.people.map((p,i)=>{
+      const charges=p.meals.length
+        ? p.meals.map(m=>`${dayName(m.date).slice(0,3)} ৳${m.price}`).join(" + ")
+        : "No meal";
+
+      return `
+        <tr>
+          <td>${i+1}</td>
+          <td>${escapeHtml(p.name)}</td>
+          <td>${p.count}</td>
+          <td>${escapeHtml(charges)}</td>
+          <td class="amount">৳${p.total.toLocaleString()}</td>
+        </tr>
+      `;
+    }).join("");
+
+    document.getElementById("detailCards").innerHTML=bill.people.map(p=>`
+      <article class="person-card">
+        <h3><span>${escapeHtml(p.name)}</span><span class="amount">৳${p.total.toLocaleString()}</span></h3>
+        ${
+          p.meals.length
+          ? `<ul>${p.meals.map(m=>`<li>${dayName(m.date)}, ${formatDate(m.date)} — ৳${m.price.toLocaleString()}</li>`).join("")}</ul>`
+          : `<p class="muted">No lunch recorded during this week.</p>`
+        }
+      </article>
+    `).join("");
+  }
+
+  document.getElementById("mealDate").addEventListener("change",updateDay);
+
+  document.getElementById("selectAll").addEventListener("click",()=>{
+    document.querySelectorAll('input[name="customer"]').forEach(box=>{
+      box.checked=true;
+      box.closest(".customer").classList.add("selected");
+    });
+  });
+
+  document.getElementById("clearSelection").addEventListener("click",()=>{
+    document.querySelectorAll('input[name="customer"]').forEach(box=>{
+      box.checked=false;
+      box.closest(".customer").classList.remove("selected");
+    });
+  });
+
+  document.getElementById("mealForm").addEventListener("submit",e=>{
+    e.preventDefault();
+
+    const editId=document.getElementById("editId").value;
+    const date=document.getElementById("mealDate").value;
+    const price=Number(document.getElementById("mealPrice").value);
+    const customerIds=selectedCustomers();
+
+    if(!date){ setStatus("Select a date.",true); return; }
+    if(!Number.isFinite(price)||price<0){ setStatus("Enter a valid price.",true); return; }
+    if(!customerIds.length){ setStatus("Select at least one person.",true); return; }
+
+    const duplicate=entries.find(x=>x.date===date && x.id!==editId);
+    if(duplicate){
+      if(!confirm(`An entry already exists for ${formatDate(date)}. Replace it?`)) return;
+      entries=entries.filter(x=>x.id!==duplicate.id);
+    }
+
+    if(editId){
+      entries=entries.map(x=>x.id===editId?{...x,date,price,customerIds}:x);
+      setStatus("Daily entry updated.");
+    }else{
+      entries.push({id:crypto.randomUUID(),date,price,customerIds});
+      setStatus("Daily entry saved.");
+    }
+
+    saveEntries();
+    renderHistory();
+
+    const savedDay=parseDate(date).getDay();
+    document.getElementById("weekEnding").value=weekRange(date).end;
+    renderBill();
+    resetForm();
+
+    if(savedDay===4){
+      document.getElementById("billSection").scrollIntoView({behavior:"smooth"});
+    }
+  });
+
+  window.editEntry=function(id){
+    const e=entries.find(x=>x.id===id);
+    if(!e) return;
+
+    document.getElementById("editId").value=e.id;
+    document.getElementById("mealDate").value=e.date;
+    document.getElementById("mealPrice").value=e.price;
+    document.getElementById("saveButton").textContent="Update Daily Entry";
+    document.getElementById("cancelEdit").classList.remove("hidden");
+    updateDay();
+    renderCustomers(e.customerIds);
+    window.scrollTo({top:0,behavior:"smooth"});
+  };
+
+  window.deleteEntry=function(id){
+    const e=entries.find(x=>x.id===id);
+    if(!e) return;
+    if(!confirm(`Delete the entry for ${formatDate(e.date)}?`)) return;
+
+    entries=entries.filter(x=>x.id!==id);
+    saveEntries();
+    renderHistory();
+    renderBill();
+    resetForm();
+    setStatus("Entry deleted.");
+  };
+
+  document.getElementById("cancelEdit").addEventListener("click",resetForm);
+
+  document.getElementById("showWeek").addEventListener("click",()=>{
+    const date=document.getElementById("mealDate").value||localISO();
+    document.getElementById("weekEnding").value=weekRange(date).end;
+    renderBill();
+    document.getElementById("billSection").scrollIntoView({behavior:"smooth"});
+  });
+
+  document.getElementById("generateBill").addEventListener("click",renderBill);
+
+  document.getElementById("weekEnding").addEventListener("change",function(){
+    if(!this.value) return;
+    this.value=weekRange(this.value).end;
+    renderBill();
+  });
+
+  document.getElementById("clearAll").addEventListener("click",()=>{
+    if(!confirm("Delete all lunch entries? This cannot be undone.")) return;
+    entries=[];
+    saveEntries();
+    renderHistory();
+    renderBill();
+    resetForm();
+    setStatus("All entries deleted.");
+  });
+
+  function csvEscape(value){
+    return `"${String(value??"").replaceAll('"','""')}"`;
+  }
+
+  function downloadCsv(filename,rows){
+    const csv=rows.map(r=>r.map(csvEscape).join(",")).join("\n");
+    const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById("exportHistory").addEventListener("click",()=>{
+    const rows=[
+      ["Date","Day","Lunch Price","People Taking Lunch","Number of People","Daily Total"],
+      ...[...entries].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>[
+        e.date,
+        dayName(e.date),
+        e.price,
+        e.customerIds.map(customerName).join("; "),
+        e.customerIds.length,
+        Number(e.price)*e.customerIds.length
+      ])
+    ];
+    downloadCsv("all_lunch_entries.csv",rows);
+  });
+
+  document.getElementById("exportBill").addEventListener("click",()=>{
+    const reference=document.getElementById("weekEnding").value||weekRange(localISO()).end;
+    const bill=weeklyBill(reference);
+    const grand=bill.people.reduce((s,p)=>s+p.total,0);
+
+    const rows=[
+      ["Weekly Lunch Bill"],
+      ["Billing Period",`${bill.range.start} to ${bill.range.end}`],
+      [],
+      ["SL","Customer","Meals Taken","Meal Details","Total Bill"],
+      ...bill.people.map((p,i)=>[
+        i+1,
+        p.name,
+        p.count,
+        p.meals.map(m=>`${m.date}: ${m.price}`).join("; "),
+        p.total
+      ]),
+      [],
+      ["Grand Total","","","",grand]
+    ];
+
+    downloadCsv(`weekly_lunch_bill_${bill.range.end}.csv`,rows);
+  });
+
+  function initialize(){
+    document.getElementById("mealDate").value=localISO();
+    document.getElementById("weekEnding").value=weekRange(localISO()).end;
+    updateDay();
+    renderCustomers([]);
+    renderHistory();
+    renderBill();
+  }
+
+  initialize();
+</script>
+</body>
+</html>
